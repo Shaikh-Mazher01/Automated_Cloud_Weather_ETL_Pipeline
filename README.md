@@ -18,7 +18,6 @@ A production-grade Python ETL pipeline that extracts hourly forecast data, lands
 ## Project Structure
 ```text
 Automated_Cloud_Weather_ETL_Pipeline/
-Projects/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml             # GitHub Actions CI/CD automation workflow
@@ -40,8 +39,8 @@ Projects/
 Clone the repository, create a Python virtual environment, and install dependencies:
 
 ```bash
-# Clone the repository
-git clone [https://github.com/Shaikh-Mazher01/Automated_Cloud_Weather_ETL_Pipeline.git](https://github.com/Shaikh-Mazher01/Automated_Cloud_Weather_ETL_Pipeline.git)
+#1 Clone the repository
+git clone https://github.com/Shaikh-Mazher01/Automated_Cloud_Weather_ETL_Pipeline.git
 cd Automated_Cloud_Weather_ETL_Pipeline
 
 # Create and activate virtual environment (Windows PowerShell)
@@ -50,3 +49,27 @@ py -m venv etl_env
 
 # Install required dependencies
 pip install -r requirements.txt
+
+2. Environment Configuration
+Copy the example environment file and configure it:
+
+cp .env.example .env
+(Default values work out-of-the-box with Azurite's development storage.)
+
+3. Start Azure Blob Emulator (Azurite)
+Requires Node.js. Install and run Azurite in a separate terminal:
+
+npm install -g azurite
+azurite --silent --location ./azurite-data
+
+4. Initialize the Database
+python create_db.py
+
+5. Run the Full Pipeline
+python main_pipeline.py
+
+6. Verify Ingested Data (optional)
+python verify_data.py
+
+7. Run Tests (optional)
+pytest
