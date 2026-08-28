@@ -1,0 +1,13 @@
+etl_env/
+venv/
+__pycache__/
+.env
+*.db
+*.log
+raw_data/
+temp_download/
+__azurite_db_*
+__blobstorage__
+__queuestorage__
+AzuriteConfig
+.pytest_cache/
