@@ -56,8 +56,9 @@ Copy the example environment file and configure it:
 
 ```bash
 cp .env.example .env
-(Default values work out-of-the-box with Azurite's development storage.)
 ```
+(Default values work out-of-the-box with Azurite's development storage.)
+
 
 ### 3. Start Azure Blob Emulator (Azurite)
 Requires Node.js. Install and run Azurite in a separate terminal:
