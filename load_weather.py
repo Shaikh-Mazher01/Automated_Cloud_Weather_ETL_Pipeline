@@ -1,21 +1,23 @@
 import os
 import sqlite3
 import pandas as pd
-from datetime import datetime
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
 
 # Load environment variables
 load_dotenv()
 
-# --- CONFIGURATION ---
-DB_NAME = "weather_database.db"
-CONTAINER_NAME = "raw-weather-data"
+# --- CONFIGURATION & VALIDATION ---
+DB_NAME = os.getenv("DB_PATH", "weather_database.db")
+CONTAINER_NAME = os.getenv("AZURE_CONTAINER_NAME", "raw-weather-data")
 AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 LOCAL_DOWNLOAD_DIR = "temp_download"
 
+if not AZURE_CONNECTION_STRING:
+    raise ValueError("Missing AZURE_STORAGE_CONNECTION_STRING in environment settings. Please check your .env file.")
+
 def download_latest_blob_csv():
-    """Finds and downloads the latest weather CSV from Azure Blob storage using system timestamp."""
+    """Finds and downloads the latest weather CSV from Azure Blob storage using system last_modified timestamp."""
     os.makedirs(LOCAL_DOWNLOAD_DIR, exist_ok=True)
     
     blob_service_client = BlobServiceClient.from_connection_string(
@@ -29,13 +31,13 @@ def download_latest_blob_csv():
         container_client.create_container()
         print(f"Container '{CONTAINER_NAME}' created.")
     
-    print("Scanning cloud container for the latest weather CSV...")
+    print("Scanning cloud container for latest weather snapshot...")
     blobs = list(container_client.list_blobs())
     if not blobs:
         print("--- ERROR: No files found in the cloud container! ---")
         return None
 
-    # Correct selection: Grab latest blob by last_modified system metadata
+    # Selection using system last_modified metadata
     latest_blob = max(blobs, key=lambda b: b.last_modified)
     download_path = os.path.join(LOCAL_DOWNLOAD_DIR, latest_blob.name)
     
@@ -48,49 +50,47 @@ def download_latest_blob_csv():
     return download_path
 
 def load_csv_to_sqlite(file_path):
-    """Loads the downloaded CSV dataframe into the SQLite database with duplicate protection."""
+    """Loads CSV dataframe into SQLite using batch execution (executemany) with duplicate protection."""
     if not file_path:
         return
         
     df = pd.read_csv(file_path)
-    print(f"Loaded {len(df)} rows from CSV. Inserting into database...")
+    total_records = len(df)
+    print(f"Loaded {total_records} rows from CSV. Processing batch ingestion into database...")
     
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    inserted_count = 0
-    duplicate_count = 0
+    # Prepare tuple array for batch insertion
+    records = [
+        (
+            row["city"],
+            row["record_timestamp"],
+            row["temperature_c"],
+            row["humidity_pct"],
+            row["wind_speed_kmh"],
+            row["ingested_at"]
+        )
+        for _, row in df.iterrows()
+    ]
     
-    for _, row in df.iterrows():
-        try:
-            # Using INSERT OR IGNORE to respect our UNIQUE constraint (city, record_timestamp)
-            cursor.execute("""
-                INSERT OR IGNORE INTO weather_forecasts 
-                (city, record_timestamp, temperature_c, humidity_pct, wind_speed_kmh, ingested_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                row["city"],
-                row["record_timestamp"],
-                row["temperature_c"],
-                row["humidity_pct"],
-                row["wind_speed_kmh"],
-                row["ingested_at"]
-            ))
-            
-            if cursor.rowcount > 0:
-                inserted_count += 1
-            else:
-                duplicate_count += 1
-                
-        except sqlite3.Error as e:
-            print(f"Error inserting row: {e}")
-            
+    # Efficient bulk insert with composite unique key deduplication
+    cursor.executemany("""
+        INSERT OR IGNORE INTO weather_forecasts 
+        (city, record_timestamp, temperature_c, humidity_pct, wind_speed_kmh, ingested_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, records)
+    
+    inserted_count = cursor.rowcount
+    duplicate_count = total_records - inserted_count
+    
     conn.commit()
     conn.close()
     
-    print(f"--- INGESTION COMPLETE ---")
-    print(f"New Rows Inserted : {inserted_count}")
-    print(f"Duplicates Skipped: {duplicate_count}")
+    print("--- INGESTION COMPLETE ---")
+    print(f"Total Records Processed : {total_records}")
+    print(f"New Rows Inserted      : {inserted_count}")
+    print(f"Duplicates Skipped     : {duplicate_count}")
 
 if __name__ == "__main__":
     latest_csv = download_latest_blob_csv()
