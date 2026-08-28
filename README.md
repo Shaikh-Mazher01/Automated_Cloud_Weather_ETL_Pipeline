@@ -33,3 +33,20 @@ Projects/
 ├── requirements.txt           # Python dependency list for environment replication
 ├── test_pipeline.py           # Automated Pytest suite for API & data contracts
 └── verify_data.py             # SQL analytical verification & query script
+
+## How to Run
+
+### 1. Environment Setup
+Clone the repository, create a Python virtual environment, and install dependencies:
+
+```bash
+# Clone the repository
+git clone [https://github.com/Shaikh-Mazher01/Automated_Cloud_Weather_ETL_Pipeline.git](https://github.com/Shaikh-Mazher01/Automated_Cloud_Weather_ETL_Pipeline.git)
+cd Automated_Cloud_Weather_ETL_Pipeline
+
+# Create and activate virtual environment (Windows PowerShell)
+py -m venv etl_env
+.\etl_env\Scripts\activate
+
+# Install required dependencies
+pip install -r requirements.txt
