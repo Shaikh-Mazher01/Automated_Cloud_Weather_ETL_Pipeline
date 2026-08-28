@@ -15,34 +15,31 @@ AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 LOCAL_DOWNLOAD_DIR = "temp_download"
 
 def download_latest_blob_csv():
-    """Finds and downloads the latest weather CSV from Azure Blob storage (or emulator)."""
+    """Finds and downloads the latest weather CSV from Azure Blob storage using system timestamp."""
     os.makedirs(LOCAL_DOWNLOAD_DIR, exist_ok=True)
     
-    # Connect with API version override for Azurite compatibility
     blob_service_client = BlobServiceClient.from_connection_string(
         AZURE_CONNECTION_STRING,
         api_version="2021-08-06"
     )
-
     
     container_client = blob_service_client.get_container_client(CONTAINER_NAME)
     
-    # Ensure container exists
     if not container_client.exists():
         container_client.create_container()
         print(f"Container '{CONTAINER_NAME}' created.")
     
     print("Scanning cloud container for the latest weather CSV...")
     blobs = list(container_client.list_blobs())
-    
     if not blobs:
         print("--- ERROR: No files found in the cloud container! ---")
         return None
-        
-    latest_blob = sorted(blobs, key=lambda b: b.name, reverse=True)[0]
+
+    # Correct selection: Grab latest blob by last_modified system metadata
+    latest_blob = max(blobs, key=lambda b: b.last_modified)
     download_path = os.path.join(LOCAL_DOWNLOAD_DIR, latest_blob.name)
     
-    print(f"Downloading {latest_blob.name} from cloud storage...")
+    print(f"Downloading {latest_blob.name} (Modified: {latest_blob.last_modified}) from cloud storage...")
     blob_client = container_client.get_blob_client(latest_blob.name)
     with open(download_path, "wb") as download_file:
         download_file.write(blob_client.download_blob().readall())
