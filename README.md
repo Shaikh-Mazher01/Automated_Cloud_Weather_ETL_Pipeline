@@ -33,7 +33,7 @@ Projects/
 ├── requirements.txt           # Python dependency list for environment replication
 ├── test_pipeline.py           # Automated Pytest suite for API & data contracts
 └── verify_data.py             # SQL analytical verification & query script
-
+```
 ## How to Run
 
 ### 1. Environment Setup
