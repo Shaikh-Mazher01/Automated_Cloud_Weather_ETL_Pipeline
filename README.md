@@ -39,7 +39,7 @@ Automated_Cloud_Weather_ETL_Pipeline/
 Clone the repository, create a Python virtual environment, and install dependencies:
 
 ```bash
-#1 Clone the repository
+# Clone the repository
 git clone https://github.com/Shaikh-Mazher01/Automated_Cloud_Weather_ETL_Pipeline.git
 cd Automated_Cloud_Weather_ETL_Pipeline
 
@@ -50,26 +50,37 @@ py -m venv etl_env
 # Install required dependencies
 pip install -r requirements.txt
 
-2. Environment Configuration
+```
+### 2. Environment Configuration
 Copy the example environment file and configure it:
 
+```bash
 cp .env.example .env
 (Default values work out-of-the-box with Azurite's development storage.)
+```
 
-3. Start Azure Blob Emulator (Azurite)
+### 3. Start Azure Blob Emulator (Azurite)
 Requires Node.js. Install and run Azurite in a separate terminal:
-
+```bash
 npm install -g azurite
 azurite --silent --location ./azurite-data
+```
 
-4. Initialize the Database
+### 4. Initialize the Database
+```bash
 python create_db.py
+```
 
-5. Run the Full Pipeline
+### 5. Run the Full Pipeline
+```bash
 python main_pipeline.py
+```
 
-6. Verify Ingested Data (optional)
+### 6. Verify Ingested Data (optional)
+```bash
 python verify_data.py
+```
 
-7. Run Tests (optional)
+### 7. Run Tests (optional)
+```
 pytest
