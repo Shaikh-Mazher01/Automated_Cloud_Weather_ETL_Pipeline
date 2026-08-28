@@ -13,8 +13,9 @@ CONTAINER_NAME = os.getenv("AZURE_CONTAINER_NAME", "raw-weather-data")
 AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 LOCAL_DOWNLOAD_DIR = "temp_download"
 
-if not AZURE_CONNECTION_STRING:
-    raise ValueError("Missing AZURE_STORAGE_CONNECTION_STRING in environment settings. Please check your .env file.")
+def download_latest_blob_csv():
+    if not AZURE_CONNECTION_STRING:
+        raise ValueError("Missing AZURE_STORAGE_CONNECTION_STRING in environment settings.")
 
 def download_latest_blob_csv():
     """Finds and downloads the latest weather CSV from Azure Blob storage using system last_modified timestamp."""
