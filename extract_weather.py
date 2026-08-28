@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,6 +19,12 @@ AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 
 # Open-Meteo API endpoint
 URL = f"https://api.open-meteo.com/v1/forecast?latitude={LATITUDE}&longitude={LONGITUDE}&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m&timezone=Asia%2FKolkata"
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+def fetch_weather_data(url, params):
+    response = requests.get(url, params=params, timeout=10)
+    response.raise_for_status()  # Throws exception on HTTP 4xx/5xx errors
+    return response.json()
 
 def fetch_and_save_weather():
     print(f"Starting weather data extraction for {CITY}...")
