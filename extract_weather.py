@@ -13,8 +13,9 @@ load_dotenv()
 AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 CONTAINER_NAME = os.getenv("AZURE_CONTAINER_NAME", "raw-weather-data")
 
-if not AZURE_CONNECTION_STRING:
-    raise ValueError("Missing AZURE_STORAGE_CONNECTION_STRING in environment settings. Please check your .env file.")
+def download_latest_blob_csv():
+    if not AZURE_CONNECTION_STRING:
+        raise ValueError("Missing AZURE_STORAGE_CONNECTION_STRING in environment settings.")
 
 # --- API RETRY-PROTECTED HELPER ---
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
