@@ -18,13 +18,18 @@ A production-grade Python ETL pipeline that extracts hourly forecast data, lands
 ## Project Structure
 ```text
 Automated_Cloud_Weather_ETL_Pipeline/
-│── raw_data/            # Local landing folder for raw CSVs
-│── temp_download/       # Staging area for cloud downloads
-│── create_db.py         # Database schema initialization script
-│── extract_weather.py   # API extraction & Azure Blob upload script
-│── load_weather.py      # Cloud download & SQL loading script
-│── main_pipeline.py     # Pipeline orchestrator & logging module
-│── verify_data.py       # SQL analytical queries script
-│── test_api.py          # API connection unit test
-│── weather_database.db  # Relational SQL database
-└── etl.log              # Execution log file
+Projects/
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # GitHub Actions CI/CD automation workflow
+├── raw_data/                  # Local landing directory for API CSV snapshots
+├── temp_download/             # Staging directory for cloud blob downloads
+├── .env.example               # Template for required environment variables
+├── .gitignore                 # Excludes local artifacts, secrets, and DBs
+├── create_db.py               # SQL database schema initialization script
+├── extract_weather.py         # API extraction with retries & Azure Blob upload
+├── load_weather.py            # Azure Blob download & SQL loading module
+├── main_pipeline.py           # Master ETL pipeline orchestrator & logger
+├── requirements.txt           # Python dependency list for environment replication
+├── test_pipeline.py           # Automated Pytest suite for API & data contracts
+└── verify_data.py             # SQL analytical verification & query script
