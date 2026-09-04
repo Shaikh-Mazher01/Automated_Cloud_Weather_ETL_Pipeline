@@ -1,43 +1,45 @@
 import sqlite3
-import os
+import pandas as pd
 
-# --- CONFIGURATION ---
-DB_NAME = "weather_database.db"
-
-def create_weather_table():
-    """Initializes the database and creates the weather table schema."""
-    conn = None
-    try:
-        # Connect to SQLite database (creates the file if it doesn't exist)
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        # DDL Query: Create structured table with constraints
-        create_table_query = """
+def initialize_database(db_path: str):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS weather_forecasts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            city VARCHAR(50) NOT NULL,
+            city TEXT NOT NULL,
             record_timestamp DATETIME NOT NULL,
-            temperature_c REAL NOT NULL,
-            humidity_pct INTEGER NOT NULL,
-            wind_speed_kmh REAL NOT NULL,
-            ingested_at DATETIME NOT NULL,
-            CONSTRAINT unique_city_record UNIQUE (city, record_timestamp)
+            temperature_c REAL,
+            humidity_pct REAL,
+            wind_speed_kmh REAL,
+            precipitation_mm REAL,
+            feels_like_c REAL,
+            uv_index REAL,
+            ingested_at DATETIME,
+            PRIMARY KEY (city, record_timestamp)
         );
-        """
-        
-        cursor.execute(create_table_query)
-        conn.commit()
-        
-        print(f"--- SUCCESS ---")
-        print(f"Database '{DB_NAME}' initialized.")
-        print("Table 'weather_forecasts' is ready with primary keys and constraints!")
-        
-    except sqlite3.Error as e:
-        print(f"--- FAILURE --- Database error: {e}")
-    finally:
-        if conn:
-            conn.close()
+    """)
+    conn.commit()
+    conn.close()
 
-if __name__ == "__main__":
-    create_weather_table()
+def load_to_sqlite(df: pd.DataFrame, db_path: str = "weather_database.db"):
+    initialize_database(db_path)
+    conn = sqlite3.connect(db_path)
+    
+    df.to_sql("staging_weather", conn, if_exists="replace", index=False)
+    
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO weather_forecasts 
+        (city, record_timestamp, temperature_c, humidity_pct, wind_speed_kmh, precipitation_mm, feels_like_c, uv_index, ingested_at)
+        SELECT city, record_timestamp, temperature_c, humidity_pct, wind_speed_kmh, precipitation_mm, feels_like_c, uv_index, ingested_at
+        FROM staging_weather;
+    """)
+    
+    cursor.execute("DROP TABLE staging_weather;")
+    conn.commit()
+    
+    cursor.execute("SELECT COUNT(*) FROM weather_forecasts;")
+    total_db_rows = cursor.fetchone()[0]
+    conn.close()
+    
+    return total_db_rows
