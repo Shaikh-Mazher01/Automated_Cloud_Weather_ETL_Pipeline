@@ -1,87 +1,66 @@
-import os
+import time
 import requests
 import pandas as pd
-from datetime import datetime
-from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_fixed
-from azure.storage.blob import BlobServiceClient
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-# Load environment variables
-load_dotenv()
+CITIES = {
+    "Mumbai": {"lat": 19.0760, "lon": 72.8777},
+    "Delhi": {"lat": 28.6139, "lon": 77.2090},
+    "Bengaluru": {"lat": 12.9716, "lon": 77.5946},
+    "Hyderabad": {"lat": 17.3850, "lon": 78.4867},
+    "Chennai": {"lat": 13.0827, "lon": 80.2707},
+    "Kolkata": {"lat": 22.5726, "lon": 88.3639},
+    "Jaipur": {"lat": 26.9124, "lon": 75.7873},
+    "Ahmedabad": {"lat": 23.0225, "lon": 72.5714}
+}
 
-# --- CONFIGURATION & VALIDATION ---
-AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-CONTAINER_NAME = os.getenv("AZURE_CONTAINER_NAME", "raw-weather-data")
-
-def download_latest_blob_csv():
-    if not AZURE_CONNECTION_STRING:
-        raise ValueError("Missing AZURE_STORAGE_CONNECTION_STRING in environment settings.")
-
-# --- API RETRY-PROTECTED HELPER ---
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def fetch_weather_data(url, params):
-    """Fetches JSON payload from API with automatic retry policy and HTTP status checks."""
-    response = requests.get(url, params=params, timeout=10)
-    response.raise_for_status()  # Throws HTTPError on 4xx/5xx status codes
-    return response.json()
-
-def fetch_and_save_weather():
-    """Fetches weather forecast using retry logic and saves standard CSV snapshot locally."""
-    url = "https://api.open-meteo.com/v1/forecast"
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=10))
+def fetch_city_weather(city_name: str, lat: float, lon: float) -> pd.DataFrame:
+    url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
-        "latitude": 17.3850,
-        "longitude": 78.4867,
-        "hourly": "temperature_2m,relative_humidity_2m,wind_speed_10m"
+        "latitude": lat,
+        "longitude": lon,
+        "start_date": "2026-08-04",
+        "end_date": "2026-09-03",
+        "hourly": [
+            "temperature_2m", 
+            "relative_humidity_2m", 
+            "wind_speed_10m",
+            "precipitation",
+            "apparent_temperature",
+            "uv_index"
+        ],
+        "timezone": "auto"
     }
     
-    print("Fetching weather forecast data from API...")
-    # Wired up retry-protected API call
-    data = fetch_weather_data(url, params)
+    response = requests.get(url, params=params, timeout=30)
+    response.raise_for_status()
+    data = response.json()
     
-    hourly = data["hourly"]
+    hourly = data.get("hourly", {})
     df = pd.DataFrame({
-        "record_timestamp": hourly["time"],
-        "temperature_c": hourly["temperature_2m"],
-        "humidity_pct": hourly["relative_humidity_2m"],
-        "wind_speed_kmh": hourly["wind_speed_10m"]
+        "city": city_name,
+        "record_timestamp": hourly.get("time"),
+        "temperature_c": hourly.get("temperature_2m"),
+        "humidity_pct": hourly.get("relative_humidity_2m"),
+        "wind_speed_kmh": hourly.get("wind_speed_10m"),
+        "precipitation_mm": hourly.get("precipitation"),
+        "feels_like_c": hourly.get("apparent_temperature"),
+        "uv_index": hourly.get("uv_index")
     })
-    
-    # Metadata enrichment
-    df["city"] = "Hyderabad"
-    df["ingested_at"] = datetime.now().isoformat()
-    
-    os.makedirs("raw_data", exist_ok=True)
-    filename = f"weather_hyderabad_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    filepath = os.path.join("raw_data", filename)
-    df.to_csv(filepath, index=False)
-    
-    print(f"Data saved locally to {filepath}")
-    return filepath
+    return df
 
-def upload_to_azure_blob(local_file_path):
-    """Uploads local CSV landing file to Azure Blob Storage (or Azurite emulator)."""
-    if not local_file_path or not os.path.exists(local_file_path):
-        print("No file found to upload.")
-        return
-
-    blob_service_client = BlobServiceClient.from_connection_string(
-        AZURE_CONNECTION_STRING,
-        api_version="2021-08-06"
-    )
-    
-    container_client = blob_service_client.get_container_client(CONTAINER_NAME)
-    if not container_client.exists():
-        container_client.create_container()
-        print(f"Container '{CONTAINER_NAME}' created.")
-
-    blob_name = os.path.basename(local_file_path)
-    blob_client = container_client.get_blob_client(blob_name)
-
-    print(f"Uploading {blob_name} to cloud landing container '{CONTAINER_NAME}'...")
-    with open(local_file_path, "rb") as data:
-        blob_client.upload_blob(data, overwrite=True)
-    print("Upload complete!")
-
-if __name__ == "__main__":
-    saved_csv = fetch_and_save_weather()
-    upload_to_azure_blob(saved_csv)
+def extract_all_cities() -> pd.DataFrame:
+    all_data = []
+    for city, coords in CITIES.items():
+        try:
+            city_df = fetch_city_weather(city, coords["lat"], coords["lon"])
+            all_data.append(city_df)
+            time.sleep(1)
+        except Exception as e:
+            print(f"Error fetching data for {city}: {e}")
+            
+    if not all_data:
+        raise RuntimeError("Failed to extract weather data for any city.")
+        
+    return pd.concat(all_data, ignore_index=True)
