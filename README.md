@@ -1,19 +1,24 @@
-# End-to-End Automated Cloud Weather ETL Pipeline
+# Automated Weather ETL & Executive Climate Risk Analytics
 
-A production-grade Python ETL pipeline that extracts hourly forecast data, lands standard CSV snapshots in local cloud emulation storage (Azure Blob Storage via Azurite), and ingests clean records into a relational SQL database with automated logging and duplicate protection.
+An end-to-end cloud data pipeline and Power BI dashboard built to monitor bi-hourly operational weather hazards across 8 major Indian metropolises (Delhi, Mumbai, Kolkata, Chennai, Bengaluru, Hyderabad, Ahmedabad, and Jaipur).
 
-## Architecture & Data Flow
-1. **Extraction (API):** Python fetches JSON payloads from Open-Meteo REST API.
-2. **Landing Zone (Cloud Emulation):** Data is standardized into CSV files and uploaded to Azure Blob Storage (`raw-weather-data`) using `azure-storage-blob` SDK.
-3. **Ingestion & Transformation:** CSV files are programmatically downloaded, parsed, and loaded into an SQLite database with composite unique constraint checks (`city`, `record_timestamp`).
-4. **Orchestration & Logging:** `main_pipeline.py` executes stages sequentially, recording runtime metrics into `etl.log`.
+The goal of this project is to convert raw, continuous meteorological measurements into clear risk indicators—specifically around thermal stress, extreme precipitation, and sustained wind exposure.
+
+---
+
+## Architecture & Data Workflow
+
+1. **Extraction**: Automated Python pipeline fetching bi-hourly weather observation metrics via OpenWeatherMap API.
+2. **Storage**: Ingestion into Azure Blob Storage (raw layer) and relational mapping inside PostgreSQL / Azure SQL Database.
+3. **Analytics & Modeling**: Dynamic DAX layer handling time-period windows (Today, Last 7 Days, Last 15 Days, Last 30 Days) and metric calculations.
+4. **Visualization**: Power BI dashboard designed in executive dark mode with high-contrast color hierarchy for risk prioritization.
+
+---
 
 ## Tech Stack
-* **Language:** Python 3.10+
-* **Data Processing:** Pandas
-* **Database & SQL:** SQLite3, SQL DDL (Composite Unique Keys)
-* **Cloud & Storage:** Azure Blob Storage SDK, Microsoft Azurite
-* **Configuration:** `python-dotenv`
+* **Language**: Python 3.x (Requests, Pandas, SQLAlchemy)
+* **Cloud & Database**: Azure Blob Storage, PostgreSQL / Azure SQL
+* **BI & Analytics**: Power BI Desktop, DAX, Power Query
 
 ## Project Structure
 ```text
@@ -32,6 +37,8 @@ Automated_Cloud_Weather_ETL_Pipeline/
 ├── requirements.txt           # Python dependency list for environment replication
 ├── test_pipeline.py           # Automated Pytest suite for API & data contracts
 └── verify_data.py             # SQL analytical verification & query script
+└── Weather_Dashboard.pbix     # Complete interactive Power BI dashboard file.
+└── Dashboard.pdf              # High-resolution PDF export for executive review.
 ```
 ## How to Run
 
@@ -83,5 +90,15 @@ python verify_data.py
 ```
 
 ### 7. Run Tests (optional)
-```
+```bash
 pytest
+```
+
+## Dashboard Features
+
+* **Dynamic Time Windowing**: Seamless switching across rolling continuous time ranges (7, 15, and 30-day windows) without date-gapping or truncation.
+* **30-Day Climate & Monsoon Trends**: Dual-axis continuous timeline tracking daily precipitation overlayed with average feels-like temperature.
+* **Diurnal Weather Progression**: Hourly profile isolating diurnal spikes in temperature and heavy rain distribution across all monitored cities.
+* **Executive Metrics**: Formatted DAX measures ensuring unit-inclusive KPI cards (e.g., `mm`, `hrs`, `%`).
+
+---
