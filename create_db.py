@@ -1,9 +1,13 @@
+import os
 import sqlite3
-import pandas as pd
 
-def initialize_database(db_path: str):
+DB_NAME = os.getenv("DB_PATH", "weather_database.db")
+
+def init_sqlite_db(db_path: str = DB_NAME) -> None:
+    """Initializes the SQLite weather database schema if it does not exist."""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS weather_forecasts (
             city TEXT NOT NULL,
@@ -16,30 +20,12 @@ def initialize_database(db_path: str):
             uv_index REAL,
             ingested_at DATETIME,
             PRIMARY KEY (city, record_timestamp)
-        );
+        )
     """)
+    
     conn.commit()
     conn.close()
 
-def load_to_sqlite(df: pd.DataFrame, db_path: str = "weather_database.db"):
-    initialize_database(db_path)
-    conn = sqlite3.connect(db_path)
-    
-    df.to_sql("staging_weather", conn, if_exists="replace", index=False)
-    
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT OR REPLACE INTO weather_forecasts 
-        (city, record_timestamp, temperature_c, humidity_pct, wind_speed_kmh, precipitation_mm, feels_like_c, uv_index, ingested_at)
-        SELECT city, record_timestamp, temperature_c, humidity_pct, wind_speed_kmh, precipitation_mm, feels_like_c, uv_index, ingested_at
-        FROM staging_weather;
-    """)
-    
-    cursor.execute("DROP TABLE staging_weather;")
-    conn.commit()
-    
-    cursor.execute("SELECT COUNT(*) FROM weather_forecasts;")
-    total_db_rows = cursor.fetchone()[0]
-    conn.close()
-    
-    return total_db_rows
+if __name__ == "__main__":
+    init_sqlite_db()
+    print(f"[+] SQLite database schema initialized at: {DB_NAME}")
