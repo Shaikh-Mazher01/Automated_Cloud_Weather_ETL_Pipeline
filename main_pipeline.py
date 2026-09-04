@@ -2,6 +2,11 @@ import sys
 import os
 import pandas as pd
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Ensure environment variables are loaded
+load_dotenv()
+
 from extract_weather import extract_all_cities
 from create_db import init_sqlite_db
 from load_weather import load_data_to_db, upload_to_azure_blob
@@ -16,7 +21,7 @@ def run_pipeline():
         # Step 1: Initialize Database Schema
         init_sqlite_db(DB_PATH)
 
-        # Step 2: Extraction (Dynamic Rolling Dates)
+        # Step 2: Extraction
         raw_df = extract_all_cities()
         initial_count = len(raw_df)
         
