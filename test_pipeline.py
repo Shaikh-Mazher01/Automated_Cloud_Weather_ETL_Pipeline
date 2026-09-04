@@ -2,7 +2,7 @@ import os
 import sqlite3
 import pandas as pd
 import pytest
-from extract_weather import fetch_weather_data, CITIES
+from extract_weather import fetch_city_weather, CITIES
 from load_weather import load_csv_to_sqlite
 
 @pytest.fixture
