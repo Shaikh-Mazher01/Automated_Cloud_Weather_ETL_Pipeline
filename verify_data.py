@@ -4,8 +4,8 @@ import pandas as pd
 
 DB_NAME = os.getenv("DB_PATH", "weather_database.db")
 
-def analyze_weather_data():
-    """Queries SQLite weather database and exports full multi-city hourly dataset for Power BI DAX modeling."""
+def analyze_and_export_weather_data():
+    """Queries SQLite weather database and exports complete multi-city dataset for Power BI."""
     conn = sqlite3.connect(DB_NAME)
     
     print("==========================================")
@@ -19,6 +19,9 @@ def analyze_weather_data():
         temperature_c,
         humidity_pct,
         wind_speed_kmh,
+        precipitation_mm,
+        feels_like_c,
+        uv_index,
         ingested_at
     FROM weather_forecasts
     ORDER BY record_timestamp ASC, city ASC;
@@ -30,10 +33,10 @@ def analyze_weather_data():
     df_raw.to_csv(hourly_export_path, index=False)
     
     city_count = df_raw["city"].nunique() if not df_raw.empty else 0
-    print(f"\n[+] Full hourly dataset exported ({len(df_raw)} records across {city_count} cities): {hourly_export_path}")
+    print(f"\n[+] Full dataset exported ({len(df_raw)} records across {city_count} cities): {hourly_export_path}")
     
     conn.close()
     return df_raw
 
 if __name__ == "__main__":
-    analyze_weather_data()
+    analyze_and_export_weather_data()
