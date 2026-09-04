@@ -1,6 +1,6 @@
 pandas
 requests
-azure-storage-blob
-python-dotenv
 tenacity
 pytest
+azure-storage-blob
+python-dotenv
