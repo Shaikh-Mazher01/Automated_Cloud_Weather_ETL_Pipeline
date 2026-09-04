@@ -1,6 +1,7 @@
 import time
 import requests
 import pandas as pd
+from datetime import datetime, timedelta
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 CITIES = {
@@ -17,11 +18,16 @@ CITIES = {
 @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_city_weather(city_name: str, lat: float, lon: float) -> pd.DataFrame:
     url = "https://archive-api.open-meteo.com/v1/archive"
+    
+    # Dynamic rolling 30-day window
+    end_dt = datetime.now()
+    start_dt = end_dt - timedelta(days=30)
+    
     params = {
         "latitude": lat,
         "longitude": lon,
-        "start_date": "2026-08-04",
-        "end_date": "2026-09-03",
+        "start_date": start_dt.strftime("%Y-%m-%d"),
+        "end_date": end_dt.strftime("%Y-%m-%d"),
         "hourly": [
             "temperature_2m", 
             "relative_humidity_2m", 
