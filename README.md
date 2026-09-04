@@ -6,19 +6,20 @@ The goal of this project is to convert raw, continuous meteorological measuremen
 
 ---
 
-## Architecture & Data Workflow
+## Data Architecture & Workflow
 
-1. **Extraction**: Automated Python pipeline fetching bi-hourly weather observation metrics via OpenWeatherMap API.
-2. **Storage**: Ingestion into Azure Blob Storage (raw layer) and relational mapping inside PostgreSQL / Azure SQL Database.
-3. **Analytics & Modeling**: Dynamic DAX layer handling time-period windows (Today, Last 7 Days, Last 15 Days, Last 30 Days) and metric calculations.
-4. **Visualization**: Power BI dashboard designed in executive dark mode with high-contrast color hierarchy for risk prioritization.
+1. **Extraction (`extract_weather.py`)**: Fetches rolling 30-day bi-hourly meteorological observations from the **Open-Meteo Archive API** with exponential backoff handling via `tenacity`.
+2. **Transform & Deduplicate (`main_pipeline.py`)**: Enforces strict `(city, record_timestamp)` composite primary key deduplication and injects ISO-formatted ingestion timestamps.
+3. **Storage (`create_db.py`)**: Staging-table pattern with idempotent `INSERT OR REPLACE` operations into an **ACID-compliant SQLite database**.
+4. **Export & Analytics (`verify_data.py`)**: Exports complete multi-metric historical data (`bi_hourly_raw.csv`) for DAX modeling in Power BI.
 
 ---
 
 ## Tech Stack
-* **Language**: Python 3.x (Requests, Pandas, SQLAlchemy)
-* **Cloud & Database**: Azure Blob Storage, PostgreSQL / Azure SQL
-* **BI & Analytics**: Power BI Desktop, DAX, Power Query
+* **Language**: Python 3.10 (Pandas, Requests, Tenacity, Pytest)
+* **Database**: SQLite3
+* **Analytics & Visualization**: Power BI Desktop, DAX, Power Query
+* **CI/CD**: GitHub Actions (Automated Pytest Suite)
 
 ## Project Structure
 ```text
