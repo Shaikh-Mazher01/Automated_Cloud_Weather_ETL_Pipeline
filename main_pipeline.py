@@ -1,53 +1,43 @@
-import logging
 import os
+import pandas as pd
 from datetime import datetime
-from extract_weather import fetch_and_save_weather
-from load_weather import download_latest_blob_csv, load_csv_to_sqlite
+from extract_weather import extract_all_cities
+from create_db import load_to_sqlite
 
-# --- LOGGING CONFIGURATION ---
-LOG_FILE = "etl.log"
-logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-
-# Print logs to console as well
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-formatter = logging.format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-console.setFormatter(formatter)
-logging.getLogger("").addHandler(console)
+OUTPUT_DIR = "raw_data"
+CSV_PATH = os.path.join(OUTPUT_DIR, "bi_hourly_raw.csv")
+DB_PATH = "weather_database.db"
 
 def run_pipeline():
-    """Orchestrates the entire extraction, upload, download, and database ingestion workflow."""
-    pipeline_start = datetime.now()
-    logging.info("==========================================")
-    logging.info("STARTING END-TO-END WEATHER ETL PIPELINE")
-    logging.info("==========================================")
+    print("Starting Weather ETL Pipeline...")
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     
-    try:
-        # --- STAGE 1: EXTRACTION & AZURE UPLOAD ---
-        logging.info("STAGE 1: Fetching API data & uploading to Azure Blob Storage...")
-        fetch_and_save_weather()
-        logging.info("STAGE 1 COMPLETE: Data extracted and landed successfully.")
-        
-        # --- STAGE 2: CLOUD DOWNLOAD & SQL LOADING ---
-        logging.info("STAGE 2: Downloading latest blob & ingesting into SQL Database...")
-        latest_csv = download_latest_blob_csv()
-        
-        if latest_csv:
-            load_csv_to_sqlite(latest_csv)
-            logging.info("STAGE 2 COMPLETE: Database updated successfully.")
-        else:
-            logging.warning("STAGE 2 SKIPPED: No CSV file retrieved from cloud storage.")
-            
-        duration = (datetime.now() - pipeline_start).total_seconds()
-        logging.info(f"--- ETL PIPELINE FINISHED SUCCESSFULLY IN {duration:.2f} SECONDS ---")
-        
-    except Exception as e:
-        logging.error(f"--- PIPELINE FAILED WITH ERROR: {str(e)} ---", exc_info=True)
+    # Step 1: Extraction
+    raw_df = extract_all_cities()
+    initial_count = len(raw_df)
+    
+    # Step 2: Strict Deduplication & Ingestion Timestamp
+    raw_df["record_timestamp"] = pd.to_datetime(raw_df["record_timestamp"])
+    clean_df = raw_df.drop_duplicates(subset=["city", "record_timestamp"], keep="last").copy()
+    
+    # Add ingested_at column to satisfy SQLite NOT NULL constraint
+    clean_df["ingested_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    dedup_count = len(clean_df)
+    skipped_duplicates = initial_count - dedup_count
+    
+    # Step 3: SQLite Idempotent Load
+    final_db_count = load_to_sqlite(clean_df, DB_PATH)
+    
+    # Step 4: Overwrite CSV Export
+    clean_df.to_csv(CSV_PATH, index=False, mode="w")
+    
+    print("\n--- INGESTION COMPLETE ---")
+    print(f"Total Records Processed : {dedup_count}")
+    print(f"New Rows Inserted      : {dedup_count}")
+    print(f"Duplicates Skipped     : {skipped_duplicates}")
+    print(f"Database Total Rows    : {final_db_count}")
+    print(f"CSV Exported To        : {CSV_PATH}")
 
 if __name__ == "__main__":
     run_pipeline()
