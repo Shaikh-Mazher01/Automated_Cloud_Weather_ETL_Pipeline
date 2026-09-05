@@ -24,19 +24,19 @@ Python (requests, pandas, tenacity), SQLite, Azure Blob Storage, Power BI / DAX,
 Automated_Cloud_Weather_ETL_and_Risk_Analysis/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml             # GitHub Actions CI/CD automation workflow
-├── raw_data/                  # Local landing directory for staging and export CSVs
+│       └── ci.yml             # CI pipeline (GitHub Actions)
+├── raw_data/                  # Local landing directory
 ├── .env.example               # Template for required environment variables
 ├── .gitignore                 # Excludes local artifacts, secrets, and DBs
-├── create_db.py               # SQL database schema initialization script
-├── extract_weather.py         # API extraction module with dynamic rolling dates
-├── load_weather.py            # Azure Blob upload & SQLite idempotent loading module
-├── main_pipeline.py           # Master ETL pipeline orchestrator with error logging
-├── requirements.txt           # Python dependency list for environment replication
-├── test_pipeline.py           # Automated Pytest suite for API & data contracts
-├── verify_data.py             # SQLite analytics verification & Power BI CSV exporter
-├── Weather_Dashboard.pbix     # Complete interactive Power BI dashboard file
-└── Dashboard.pdf              # High-resolution PDF export for executive review
+├── create_db.py               # SQLite schema setup
+├── extract_weather.py         # Open-Meteo API extraction with retries
+├── load_weather.py            # Azure Blob upload + SQLite load
+├── main_pipeline.py           # Orchestrates the full run
+├── requirements.txt           # Python dependency
+├── test_pipeline.py           # Pytest suite
+├── verify_data.py             # Query + export for Power BI
+├── Weather_Dashboard.pbix     # Power BI dashboard
+└── Dashboard.pdf              # Static export of the dashboard
 ```
 ## How to Run
 
