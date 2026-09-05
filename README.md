@@ -1,35 +1,21 @@
 # Automated Cloud Weather ETL & Executive Climate Risk Analytics
 
-An automated Python ETL pipeline and Power BI dashboard built to monitor bi-hourly operational weather hazards across 8 major Indian metropolises (Delhi, Mumbai, Kolkata, Chennai, Bengaluru, Hyderabad, Ahmedabad, and Jaipur).
+An end-to-end pipeline that pulls rolling 30-day weather data for 8 major Indian cities — Delhi, Mumbai, Kolkata, Chennai, Bengaluru, Hyderabad, Ahmedabad, and Jaipur — and turns it into a Power BI dashboard for spotting heat, rain, and wind risk.
 
-The goal of this project is to convert raw, continuous meteorological measurements into actionable operational indicators—specifically around thermal stress, extreme precipitation, and sustained wind exposure.
+---
+## How it works
+ 
+1. **Extract** — `extract_weather.py` pulls hourly temperature, humidity, wind speed, precipitation, feels-like temperature, and UV index from the **Open-Meteo Archive API** for each city, covering the trailing 30 days. It's wrapped in retry logic (via `tenacity`) with exponential backoff, so a single flaky API call doesn't kill the whole run.
+2. **Store** — Raw extracts are deduplicated on `(city, timestamp)` and loaded into a local **SQLite** database (`create_db.py`, `load_weather.py`). Every run also uploads a timestamped CSV snapshot to **Azure Blob Storage** as a raw-layer backup.
+3. **Verify & export** — `verify_data.py` queries the SQLite store and exports a clean CSV that Power BI reads from.
+4. **Visualize** — `Weather_Dashboard.pbix` turns that export into a dashboard.
 
 ---
 
-## Data Architecture & Workflow
 
-1. **Extraction (`extract_weather.py`)**: Fetches a dynamic rolling 30-day bi-hourly window of meteorological observations from the **Open-Meteo Archive API** with exponential backoff retry handling via `tenacity`.
-2. **Cloud Archival (`load_weather.py`)**: Streams per-run raw extract snapshots (`latest_extract.csv`) directly to **Azure Blob Storage** (`weather-raw-data` container) with automatic retries and graceful fallback to local-only mode if Azure credentials are unconfigured.
-3. **Transform & Storage (`create_db.py`, `load_weather.py`)**: Enforces strict `(city, record_timestamp)` composite primary key deduplication, injects ISO-formatted ingestion timestamps, and performs idempotent `INSERT OR REPLACE` operations into an **ACID-compliant SQLite database**.
-4. **Analytics Export (`verify_data.py`)**: Queries complete cumulative history from SQLite and exports a clean dataset (`bi_hourly_raw.csv`) containing all weather metrics (`feels_like_c`, `precipitation_mm`, `uv_index`, `wind_speed_kmh`, etc.) for DAX modeling in Power BI.
-
----
-
-## Core Operational Thresholds
-
-* **Thermal Stress**: Hourly windows where feels-like temperature exceeds **≥ 35°C**.
-* **Heavy Rain Exposure**: Cumulative rainfall volume where precipitation rates hit **≥ 2.5 mm/h**.
-* **Sustained Wind Advisory**: Continuous monitoring of sustained wind speed **≥ 25 km/h**.
-* **Risk Score Scaling**: Normalized matrix scoring Thermal Stress Score (0–6) against Rainfall Intensity Index (0–6).
-
----
-
-## Tech Stack
-* **Language**: Python 3.10 (Pandas, Requests, Tenacity, Pytest, Python-Dotenv)
-* **Cloud Storage**: Azure Blob Storage (Azure SDK)
-* **Database**: SQLite3
-* **Analytics & Visualization**: Power BI Desktop, DAX, Power Query
-* **CI/CD**: GitHub Actions (Automated Pytest Suite)
+## Tech
+ 
+Python (requests, pandas, tenacity), SQLite, Azure Blob Storage, Power BI / DAX, GitHub Actions, pytest.
 
 ---
 
@@ -105,12 +91,10 @@ python verify_data.py
 ```bash
 pytest
 ```
-
-## Dashboard Features
-
-* **Dynamic Time Windowing**: Seamless switching across rolling continuous time ranges (7, 15, and 30-day windows) without date-gapping or truncation.
-* **30-Day Climate & Monsoon Trends**: Dual-axis continuous timeline tracking daily precipitation overlayed with average feels-like temperature.
-* **Diurnal Weather Progression**: Hourly profile isolating diurnal spikes in temperature and heavy rain distribution across all monitored cities.
-* **Executive Metrics**: Formatted DAX measures ensuring unit-inclusive KPI cards (e.g., `mm`, `hrs`, `%`).
-
+---
+## Dashboard highlights
+ 
+- Dual-axis chart tracking daily precipitation against average feels-like temperature
+- Hour-by-hour view of temperature and rain spikes across all 8 cities
+- KPI cards with correct units baked in (mm, hrs, %) via DAX
 ---
